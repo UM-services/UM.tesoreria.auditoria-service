@@ -1,0 +1,36 @@
+-- Esquema de auditoría de Tesorería.
+-- Base: tesium_aud (creada aparte de tesium: la auditoría no comparte esquema con el negocio).
+-- Compatible con MySQL 5.7 (motor actual de UM): sin CHECK, sin defaults JSON.
+CREATE TABLE IF NOT EXISTS audit_event (
+    event_id        CHAR(36)      NOT NULL,
+    occurred_at     DATETIME(6)   NOT NULL,
+    received_at     DATETIME(6)   NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+    correlation_id  VARCHAR(64)   NULL,
+    service         VARCHAR(48)   NOT NULL,
+    level           VARCHAR(8)    NOT NULL,
+    operation       VARCHAR(16)   NOT NULL,
+    entity          VARCHAR(64)   NULL,
+    entity_id       VARCHAR(64)   NULL,
+    actor_type      VARCHAR(12)   NOT NULL,
+    actor_id        BIGINT        NULL,
+    actor_login     VARCHAR(64)   NULL,
+    actor_trust     VARCHAR(12)   NOT NULL,
+    client_ip       VARCHAR(45)   NULL,
+    http_method     VARCHAR(8)    NULL,
+    endpoint        VARCHAR(255)  NULL,
+    outcome         VARCHAR(12)   NOT NULL,
+    http_status     SMALLINT      NULL,
+    affected_rows   INT           NULL,
+    changed_fields  JSON          NULL,
+    before_data     JSON          NULL,
+    after_data      JSON          NULL,
+    payload_hash    CHAR(64)      NULL,
+    metadata        JSON          NULL,
+    PRIMARY KEY (event_id),
+    KEY idx_correlation (correlation_id),
+    KEY idx_entity (entity, entity_id, occurred_at),
+    KEY idx_actor (actor_id, occurred_at),
+    KEY idx_occurred (occurred_at),
+    KEY idx_outcome (outcome, occurred_at),
+    KEY idx_service_level (service, level, occurred_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci ROW_FORMAT=DYNAMIC;
