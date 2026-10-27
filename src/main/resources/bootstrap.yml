@@ -1,0 +1,83 @@
+app:
+  port: ${APP_PORT:8211}
+  logging: ${APP_LOGGING:info}
+  server: ${APP_SERVER:10.147.20.20:3306}
+  database: ${APP_DATABASE:tesium_aud}
+  user: ${APP_USER:root}
+  password: ${APP_PASSWORD:root}
+  api_key: ${APP_API_KEY:}
+  swagger_user: ${APP_SWAGGER_USER:admin}
+  swagger_password: ${APP_SWAGGER_PASSWORD:password}
+  consul:
+    host: ${APP_CONSUL_HOST:consul-service}
+    port: ${APP_CONSUL_PORT:8500}
+  # Consumo de tesoreria-audit-evento (topic declarado por tesoreria-mercadopago) y declaración
+  # de su DLT, que es la única que este servicio posee.
+  kafka:
+    topic: ${APP_AUDIT_TOPIC:tesoreria-audit-evento}
+    dlt-topic: ${APP_AUDIT_DLT_TOPIC:tesoreria-audit-evento.DLT}
+    topic-partitions: ${APP_AUDIT_TOPIC_PARTITIONS:3}
+    concurrency: ${APP_AUDIT_CONCURRENCY:3}
+    topics:
+      replicas: ${APP_KAFKA_TOPIC_REPLICAS:1}
+
+server:
+  port: ${app.port}
+
+spring:
+  application:
+    name: tesoreria-auditoria-service
+  kafka:
+    bootstrap-servers: ${APP_KAFKA_BOOTSTRAP:kafka:9092}
+  cloud:
+    consul:
+      host: ${app.consul.host}
+      port: ${app.consul.port}
+      discovery:
+        prefer-ip-address: true
+        # Solo resolver instancias con los checks en passing (Feign/LoadBalancer).
+        query-passing: true
+        # Consul: readiness (sin dependencias) + poda si queda critico.
+        health-check-path: /actuator/health/readiness
+        health-check-critical-timeout: 5m
+        tags: tesoreria,auditoria
+  datasource:
+    url: jdbc:mysql://${app.server}/${app.database}?useSSL=false&serverTimezone=UTC
+    username: ${app.user}
+    password: ${app.password}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+  jpa:
+    database-platform: org.hibernate.dialect.MySQLDialect
+    hibernate:
+      ddl-auto: none
+    open-in-view: false
+    properties:
+      hibernate:
+        jdbc:
+          batch_size: 200
+        order_inserts: true
+  security:
+    user:
+      name: ${app.swagger_user}
+      password: ${app.swagger_password}
+
+logging:
+  level:
+    um.tesoreria.aud: ${app.logging}
+    web: ${app.logging}
+    org:
+      hibernate:
+        SQL: ${app.logging}
+      springframework.cloud.config: ${app.logging}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
+  endpoint:
+    health:
+      # readiness/liveness explicitos: Consul consulta /actuator/health/readiness.
+      probes:
+        enabled: true
+      show-details: never
