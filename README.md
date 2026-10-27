@@ -19,7 +19,8 @@ Versión actual: **1.0.0** (ver [CHANGELOG.md](CHANGELOG.md)).
 - Spring Boot 4.1.2
 - Spring Cloud 2025.1.4 (Consul discovery)
 - Spring Boot Actuator
-- Maven 3.8.8
+- Spring Kafka (declaración de la DLT de auditoría)
+- Maven 3.10.0 (wrapper)
 - MySQL Connector/J 26.10.0
 - SpringDoc OpenAPI 3.1.1
 - Spring Security
@@ -30,7 +31,7 @@ Versión actual: **1.0.0** (ver [CHANGELOG.md](CHANGELOG.md)).
 
 ## Requisitos previos
 - Java JDK 25 o superior
-- Maven 3.8.8 o superior
+- Maven 3.8.8 o superior (el wrapper descarga 3.10.0)
 - MySQL 8.0 o superior
 - Docker (opcional)
 
@@ -47,6 +48,10 @@ los servicios UM). Todo se puede inyectar por variables de entorno:
 | `APP_API_KEY` | *(vacío)* | Clave para la ingesta (`X-API-Key`). Sin ella, la escritura responde 503 |
 | `APP_SWAGGER_USER` / `APP_SWAGGER_PASSWORD` | `admin` / `password` | Basic auth de Swagger |
 | `APP_CONSUL_HOST` / `APP_CONSUL_PORT` | `consul-service` / `8500` | Consul |
+| `APP_KAFKA_BOOTSTRAP` | `kafka:9092` | Bootstrap de Kafka usado para declarar la DLT |
+| `APP_AUDIT_DLT_TOPIC` | `tesoreria-audit-evento.DLT` | Nombre de la DLT declarada por el servicio |
+| `APP_AUDIT_TOPIC_PARTITIONS` | `3` | Particiones de la DLT (deben coincidir con el topic origen) |
+| `APP_KAFKA_TOPIC_REPLICAS` | `1` | Replication factor de la DLT (según el entorno) |
 | `APP_LOGGING` | `info` | Nivel de log |
 
 ```yaml
@@ -62,10 +67,17 @@ app:
   consul:
     host: ${APP_CONSUL_HOST:consul-service}
     port: ${APP_CONSUL_PORT:8500}
+  kafka:
+    dlt-topic: ${APP_AUDIT_DLT_TOPIC:tesoreria-audit-evento.DLT}
+    topic-partitions: ${APP_AUDIT_TOPIC_PARTITIONS:3}
+    topics:
+      replicas: ${APP_KAFKA_TOPIC_REPLICAS:1}
 
 spring:
   application:
     name: tesoreria-auditoria-service
+  kafka:
+    bootstrap-servers: ${APP_KAFKA_BOOTSTRAP:kafka:9092}
   cloud:
     consul:
       discovery:
@@ -139,7 +151,7 @@ Consulta (red interna; JWT pendiente):
 | `GET` | `/api/tesoreria/auditoria/evento/correlacion/{correlationId}` | Todos los cambios de una operación |
 | `GET` | `/api/tesoreria/auditoria/evento/entidad/{entity}/{entityId}` | Últimos 100 cambios de una entidad |
 | `GET` | `/api/tesoreria/auditoria/evento/actor/{actorId}` | Últimos 100 eventos de un usuario |
-| `GET` | `/api/tesoreria/auditoria/evento/periodo/{anho}/{mes}` | Eventos del período (paginado, 200 por página) |
+| `GET` | `/api/tesoreria/auditoria/evento/periodo/{anho}/{mes}` | Eventos del período (hasta 200, orden descendente) |
 | `GET` | `/api/tesoreria/auditoria/evento/servicio/{service}/periodo/{anho}/{mes}` | Ídem, acotado a un emisor |
 | `POST` | `/api/tesoreria/auditoria/evento/search` | Búsqueda compuesta por body |
 
@@ -147,13 +159,15 @@ Consulta (red interna; JWT pendiente):
 
 | `level` | Cuándo | Contenido |
 |---|---|---|
-| `REQUEST` | Una fila por operación HTTP (o job) de un emisor, incluso si falla | actor, IP, endpoint, `outcome`, `affectedRows`, duración |
+| `REQUEST` | Una fila por operación HTTP (o job) de un emisor, incluso si falla | actor, IP, endpoint, `outcome`, `affectedRows` |
 | `CHANGE` | Un evento por cambio de entidad JPA (sólo `tesoreria-core`) | `entity`, `entityId`, `changedFields`, `beforeData`/`afterData` enmascarados |
 | `SUMMARY` | Operación masiva resumida por el emisor | `entity`, `affectedRows` y `metadata.counts` (bajas/altas), período, filtro y `bulkId` |
 
 `operation` admite `INSERT`, `UPDATE`, `DELETE`, `ACCESS` y `BULK`. Para `operation=BULK` el
 servicio exige `affectedRows > 0`; para `CHANGE` y `SUMMARY`, `entity` no puede ser vacío. El
-buscador compuesto permite filtrar por `level`, `operation`, `service` y rango de fechas.
+buscador compuesto (`POST /search`) filtra por `level`, `operation`, `outcome`, `service`,
+`actorId`, `entity`, `entityId`, `correlationId` y rango `from`/`to`, con paginación
+(`page`, `size` hasta 200).
 
 ### Catálogo de eventos por emisor
 
@@ -177,6 +191,9 @@ buscador compuesto permite filtrar por `level`, `operation`, `service` y rango d
 ## Integración en el stack
 - Se registra en Consul como `tesoreria-auditoria-service` (tags `tesoreria,auditoria`) y expone
   `GET /actuator/health/readiness` para el health check.
+- Declara la DLT `tesoreria-audit-evento.DLT` (3 particiones, retención de 14 días). El topic
+  principal `tesoreria-audit-evento` lo declara `tesoreria-mercadopago`; el consumo en este
+  servicio todavía no está implementado.
 - El gateway de tesorería publica la ruta `/api/tesoreria/auditoria/**` → `lb://tesoreria-auditoria-service`.
 - En el compose local corre en el puerto `8211`.
 - Los emisores auditan por defecto (`TESORERIA_AUDIT_MODE=SEND`) y comparten
@@ -207,6 +224,7 @@ empiezan a descartar. En el compose la clave sale de `TESORERIA_AUDIT_API_KEY`
 │   │   │       ├── configuration/
 │   │   │       │   ├── AuditApiKeyFilter.java
 │   │   │       │   ├── GlobalExceptionHandler.java
+│   │   │       │   ├── KafkaTopicsConfiguration.java
 │   │   │       │   └── SecurityConfig.java
 │   │   │       ├── controller/
 │   │   │       ├── dto/
@@ -237,10 +255,10 @@ empiezan a descartar. En el compose la clave sale de `TESORERIA_AUDIT_API_KEY`
 ```
 
 ## Logging
-El servicio utiliza Log4j2 para el manejo de logs con las siguientes características:
-- Logs diarios con rotación por tamaño (10MB)
-- Formato personalizado con timestamp, nivel, thread y mensaje
-- Almacenamiento en directorio `./logs`
+El servicio usa Log4j2 (`spring-boot-starter-log4j2`, con `spring-boot-starter-logging` excluido)
+y el patrón/destino por defecto de Spring Boot (consola). El nivel se controla con `APP_LOGGING`
+(`logging.level.um.tesoreria.aud`, default `info`). El repositorio no incluye un `log4j2.xml`:
+para escribir a archivo o rotar por tamaño hay que agregar esa configuración.
 
 ## Contribución
 1. Fork el proyecto

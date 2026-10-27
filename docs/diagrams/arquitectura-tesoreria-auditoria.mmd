@@ -1,0 +1,31 @@
+flowchart TB
+    Client["Emisores<br/>core / mercadopago / guarani"]
+
+    subgraph Service["um.tesoreria.auditoria-service"]
+        Filter["AuditApiKeyFilter<br/>X-API-Key"]
+        Security["Spring Security"]
+        Controller["AuditEventController"]
+        Svc["AuditEventService"]
+        Mapper["AuditEventMapper<br/>+ AuditPayloadHasher"]
+        Repo["IAuditEventRepository"]
+        KafkaTopics["KafkaTopicsConfiguration<br/>DLT"]
+    end
+
+    subgraph Infra["Infraestructura"]
+        MySQL["MySQL<br/>tesium_aud.audit_event"]
+        Kafka["Kafka<br/>tesoreria-audit-evento.DLT"]
+        Consul["Consul<br/>tesoreria-auditoria-service"]
+        Actuator["Actuator<br/>/actuator/health/readiness"]
+    end
+
+    Client --> Filter
+    Client --> Security
+    Filter --> Controller
+    Security --> Controller
+    Controller --> Svc
+    Svc --> Mapper
+    Svc --> Repo
+    Repo --> MySQL
+    KafkaTopics -->|"declara"| Kafka
+    Controller --> Actuator
+    Svc --> Consul
