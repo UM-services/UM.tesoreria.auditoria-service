@@ -10,7 +10,7 @@
     </parent>
     <groupId>ar.edu</groupId>
     <artifactId>um.tesoreria.aud.rest</artifactId>
-    <version>1.0.0</version>
+    <version>1.0.1</version>
     <name>um.tesoreria.aud.rest</name>
     <description>Servicio de auditoría de Tesorería</description>
     <properties>

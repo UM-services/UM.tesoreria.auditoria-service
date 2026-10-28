@@ -12,7 +12,7 @@ hizo qué, cuándo, sobre qué entidad y con qué resultado** en los servicios e
 | `tesoreria-mercadopago` | `REQUEST` HTTP (incluye el webhook de Mercado Pago) y ejecución de los jobs nocturnos | Cola en memoria + HTTP |
 | `tesoreria-guarani` | `REQUEST` de **consulta** (`ACCESS`) a datos personales y académicos | Cola en memoria + HTTP |
 
-Versión actual: **1.0.0** (ver [CHANGELOG.md](CHANGELOG.md)).
+Versión actual: **1.0.1** (ver [CHANGELOG.md](CHANGELOG.md)).
 
 ## Tecnologías
 - Java 25
@@ -194,6 +194,9 @@ buscador compuesto (`POST /search`) filtra por `level`, `operation`, `outcome`, 
 - Declara la DLT `tesoreria-audit-evento.DLT` (3 particiones, retención de 14 días). El topic
   principal `tesoreria-audit-evento` lo declara `tesoreria-mercadopago`; el consumo en este
   servicio todavía no está implementado.
+- Si la DLT ya existe, el servicio actualiza sus configs
+  (`spring.kafka.admin.modify-topic-configs: true`). El arranque no falla si el broker no está
+  disponible (`fail-fast` desactivado por defecto): la ingesta REST sigue funcionando.
 - El gateway de tesorería publica la ruta `/api/tesoreria/auditoria/**` → `lb://tesoreria-auditoria-service`.
 - En el compose local corre en el puerto `8211`.
 - Los emisores auditan por defecto (`TESORERIA_AUDIT_MODE=SEND`) y comparten
