@@ -5,6 +5,12 @@ Todos los cambios notables en este proyecto serán documentados en este archivo.
 El formato está basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.0.0/),
 y este proyecto adhiere a [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.1] - 2026-10-28
+
+### Corregido
+- fix: eliminada `app.kafka.concurrency` de `bootstrap.yml`. El servicio no tiene ningún `@KafkaListener` (la ingesta es REST, `POST /api/tesoreria/auditoria/evento/lote`) y la propiedad no se leía en el código.
+- fix: `spring.kafka.admin.modify-topic-configs: true` para que el `KafkaAdmin` aplique `retention.ms` (14 días), `cleanup.policy=delete` y `min.insync.replicas` a la DLT `tesoreria-audit-evento.DLT` cuando el topic ya existe. El arranque sigue sin depender del broker (`spring.kafka.admin.fail-fast` es `false` por defecto): la ingesta REST continúa disponible y la DLT se declara en el siguiente arranque con broker accesible.
+
 ## [1.0.0] - 2026-10-27
 
 ### Agregado

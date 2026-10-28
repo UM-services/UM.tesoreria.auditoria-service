@@ -17,7 +17,8 @@ app:
     topic: ${APP_AUDIT_TOPIC:tesoreria-audit-evento}
     dlt-topic: ${APP_AUDIT_DLT_TOPIC:tesoreria-audit-evento.DLT}
     topic-partitions: ${APP_AUDIT_TOPIC_PARTITIONS:3}
-    concurrency: ${APP_AUDIT_CONCURRENCY:3}
+    # No hay `concurrency` acá: el servicio todavía no tiene ningún @KafkaListener (la ingesta
+    # es REST, POST /evento/lote). Se agrega junto con el consumidor.
     topics:
       replicas: ${APP_KAFKA_TOPIC_REPLICAS:1}
 
@@ -29,6 +30,11 @@ spring:
     name: tesoreria-auditoria-service
   kafka:
     bootstrap-servers: ${APP_KAFKA_BOOTSTRAP:kafka:9092}
+    admin:
+      # Sin `fail-fast`: la función de este servicio es la ingesta REST (/evento/lote). Si el
+      # broker no está, la auditoría tiene que seguir aceptando eventos; el DLT se declara
+      # cuando el broker vuelva a estar disponible en el próximo arranque.
+      modify-topic-configs: true
   cloud:
     consul:
       host: ${app.consul.host}
