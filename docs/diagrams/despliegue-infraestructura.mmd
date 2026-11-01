@@ -1,0 +1,31 @@
+flowchart TB
+    subgraph DockerHost["Docker Host"]
+        A["um.tesoreria.auditoria-service<br/>puerto 8211"]
+        B["MySQL<br/>tesium_aud<br/>puerto 3306"]
+        C["tesoreria-core<br/>outbox en tesium"]
+        D["tesoreria-mercadopago<br/>cola en memoria"]
+        E["tesoreria-guarani<br/>cola en memoria"]
+        K["Kafka<br/>tesoreria-audit-evento.DLT"]
+    end
+
+    subgraph Platform["Plataforma UM"]
+        F["Consul<br/>service registry"]
+        G["Gateway de tesorería<br/>/api/tesoreria/auditoria/**"]
+    end
+
+    subgraph CICD["CI/CD"]
+        H["GitHub Actions"]
+        I["Docker Hub"]
+    end
+
+    Developer["Developer"] --> J["git push"]
+    J --> H
+    H --> I
+    I --> A
+    G --> A
+    A --> B
+    A --> F
+    A --> K
+    C --> A
+    D --> A
+    E --> A

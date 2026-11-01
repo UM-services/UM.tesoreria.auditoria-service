@@ -1,0 +1,27 @@
+sequenceDiagram
+    autonumber
+    actor Core as tesoreria-core
+    participant Outbox as audit_outbox<br/>(tesium)
+    participant Sender as AuditOutboxSender
+    participant Filter as AuditApiKeyFilter
+    participant Controller as AuditEventController
+    participant Service as AuditEventService
+    participant DB as MySQL<br/>(tesium_aud)
+
+    Core->>Outbox: INSERT en la misma transacción del cambio
+    loop cada sender-delay-ms
+        Sender->>Outbox: claim PENDING (token + lease 60s)
+        Sender->>Filter: POST /api/tesoreria/auditoria/evento/lote<br/>X-API-Key
+        alt Clave ausente o inválida
+            Filter-->>Sender: 401 Unauthorized
+            Sender->>Outbox: reintento con backoff
+        else Clave válida
+            Filter->>Controller: Continuar request
+            Controller->>Service: ingest(AuditBatchRequest)
+            Service->>DB: SELECT eventos existentes (idempotencia)
+            Service->>DB: INSERT eventos nuevos
+            Service-->>Controller: AuditBatchResponse
+            Controller-->>Sender: 202 Accepted
+            Sender->>Outbox: marcar SENT
+        end
+    end
