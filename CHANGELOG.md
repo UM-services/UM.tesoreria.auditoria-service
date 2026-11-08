@@ -5,6 +5,14 @@ Todos los cambios notables en este proyecto serán documentados en este archivo.
 El formato está basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.0.0/),
 y este proyecto adhiere a [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.2] - 2026-11-08
+
+### Corregido
+- fix: host MySQL por defecto actualizado de `10.147.20.20:3306` a `192.168.201.132:3306` en `bootstrap.yml`; `APP_SERVER` sigue siendo inyectable por variable de entorno. Se actualizaron también los ejemplos de conexión de `README.md`.
+
+### Cambiado
+- test: configuración del contexto de test migrada de `src/test/resources/application.properties` a `application.yml` (H2 en memoria, Consul deshabilitado y `app.api-key=test-key`), sin cambios en los tests ni en el comportamiento del servicio.
+
 ## [1.0.1] - 2026-10-28
 
 ### Corregido
