@@ -1,7 +1,7 @@
 app:
   port: ${APP_PORT:8211}
   logging: ${APP_LOGGING:info}
-  server: ${APP_SERVER:10.147.20.20:3306}
+  server: ${APP_SERVER:192.168.201.132:3306}
   database: ${APP_DATABASE:tesium_aud}
   user: ${APP_USER:root}
   password: ${APP_PASSWORD:root}
