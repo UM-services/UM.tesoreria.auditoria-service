@@ -1,6 +1,15 @@
 # Um.tesoreria.auditoria-service
 
 [![UM.tesoreria.auditoria-service CI](https://github.com/UM-services/UM.tesoreria.auditoria-service/actions/workflows/maven.yml/badge.svg?branch=main)](https://github.com/UM-services/UM.tesoreria.auditoria-service/actions/workflows/maven.yml)
+![Java](https://img.shields.io/badge/Java-25-ED8B00?logo=openjdk&logoColor=white)
+![Spring Boot](https://img.shields.io/badge/Spring%20Boot-4.1.2-6DB33F?logo=springboot&logoColor=white)
+![Spring Cloud](https://img.shields.io/badge/Spring%20Cloud-2025.1.4-6DB33F?logo=spring&logoColor=white)
+![Spring Security](https://img.shields.io/badge/Spring%20Security-6DB33F?logo=springsecurity&logoColor=white)
+![Apache Kafka](https://img.shields.io/badge/Apache%20Kafka-231F20?logo=apachekafka&logoColor=white)
+![MySQL](https://img.shields.io/badge/MySQL-8.0-4479A1?logo=mysql&logoColor=white)
+![Maven](https://img.shields.io/badge/Maven-3.10.0-C71A36?logo=apachemaven&logoColor=white)
+![Docker](https://img.shields.io/badge/Docker-2496ED?logo=docker&logoColor=white)
+![JaCoCo](https://img.shields.io/badge/JaCoCo-0.8.15-C71A36)
 
 ## Descripción
 Servicio de auditoría del sistema de Tesorería de la Universidad de Mendoza. Registra **quién
@@ -12,7 +21,7 @@ hizo qué, cuándo, sobre qué entidad y con qué resultado** en los servicios e
 | `tesoreria-mercadopago` | `REQUEST` HTTP (incluye el webhook de Mercado Pago) y ejecución de los jobs nocturnos | Cola en memoria + HTTP |
 | `tesoreria-guarani` | `REQUEST` de **consulta** (`ACCESS`) a datos personales y académicos | Cola en memoria + HTTP |
 
-Versión actual: **1.0.1** (ver [CHANGELOG.md](CHANGELOG.md)).
+Versión actual: **1.0.2** (ver [CHANGELOG.md](CHANGELOG.md)).
 
 ## Tecnologías
 - Java 25
@@ -42,7 +51,7 @@ los servicios UM). Todo se puede inyectar por variables de entorno:
 | Variable | Default | Descripción |
 |---|---|---|
 | `APP_PORT` | `8211` | Puerto HTTP |
-| `APP_SERVER` | `10.147.20.20:3306` | Host MySQL |
+| `APP_SERVER` | `192.168.201.132:3306` | Host MySQL |
 | `APP_DATABASE` | `tesium_aud` | Base de datos de auditoría (separada de `tesium`) |
 | `APP_USER` / `APP_PASSWORD` | `root` / `root` | Credenciales MySQL |
 | `APP_API_KEY` | *(vacío)* | Clave para la ingesta (`X-API-Key`). Sin ella, la escritura responde 503 |
@@ -57,7 +66,7 @@ los servicios UM). Todo se puede inyectar por variables de entorno:
 ```yaml
 app:
   port: ${APP_PORT:8211}
-  server: ${APP_SERVER:10.147.20.20:3306}
+  server: ${APP_SERVER:192.168.201.132:3306}
   database: ${APP_DATABASE:tesium_aud}
   user: ${APP_USER:root}
   password: ${APP_PASSWORD:root}
@@ -90,7 +99,7 @@ El servicio **no crea ni migra el esquema** (`spring.jpa.hibernate.ddl-auto: non
 versionado en `sql/` y lo aplica quien despliega:
 
 ```bash
-mysql -h 10.147.20.20 -u root -p tesium_aud < sql/001_audit_event.sql
+mysql -h 192.168.201.132 -u root -p tesium_aud < sql/001_audit_event.sql
 ```
 
 `tesium_aud` es una base **dedicada** (creada el 2026-10-27). El outbox de `tesoreria-core`,
@@ -124,7 +133,7 @@ mvn spring-boot:run
 ### Docker
 ```bash
 docker build -t um-tesoreria-auditoria .
-docker run -p 8211:8211 -e APP_SERVER=10.147.20.20:3306 um-tesoreria-auditoria
+docker run -p 8211:8211 -e APP_SERVER=192.168.201.132:3306 um-tesoreria-auditoria
 ```
 
 ## Uso
